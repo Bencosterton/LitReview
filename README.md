@@ -83,7 +83,7 @@ All downloaded papers are saved in the `papers` directory, and their metadata (i
 
 
 
-### Search Depth
+## Search Depth
 
 The 'depth' option will dictate how deep the search goes. 
 
