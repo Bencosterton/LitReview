@@ -23,8 +23,8 @@ class PaperFetcher:
         self.output_dir = output_dir
         self.visited_papers: Set[str] = set()
         self.logger = logging.getLogger('paper_fetcher')
-        self.rate_limit = Semaphore(3)  # Allow 3 concurrent requests
-        self.request_interval = 2.0  # Minimum time between requests in seconds
+        self.rate_limit = Semaphore(3)  # number of concurrent requests
+        self.request_interval = 2.0  # time between requests in seconds
         self.last_request_time = 0
 
     async def wait_for_rate_limit(self):
@@ -36,15 +36,13 @@ class PaperFetcher:
 
     def clean_filename(self, title: str) -> str:
         """Convert title to a clean filename"""
-        # Replace spaces and special chars with underscores
         clean = re.sub(r'[^\w\s-]', '', title)
         clean = re.sub(r'[-\s]+', '_', clean)
-        # Limit length to avoid too long filenames
         return clean[:100]
 
     def extract_filename_from_response(self, response: aiohttp.ClientResponse, paper_data: Dict) -> str:
         """Extract filename from response headers or generate from title"""
-        # Try to get filename from Content-Disposition header
+        # try to get filename
         cd = response.headers.get('Content-Disposition')
         if cd:
             fname = re.findall("filename=(.+)", cd)
@@ -53,22 +51,21 @@ class PaperFetcher:
                 self.logger.info(f"Using filename from Content-Disposition: {filename}")
                 return filename
 
-        # Try to get filename from URL
+        # try to get filename from url
         url_path = urllib.parse.urlparse(str(response.url)).path
         if url_path and url_path.endswith('.pdf'):
             url_filename = Path(url_path).stem
-            if len(url_filename) > 10:  # Only use if it seems like a real filename
+            if len(url_filename) > 10:
                 self.logger.info(f"Using filename from URL: {url_filename}.pdf")
                 return f"{url_filename}.pdf"
 
-        # Generate filename from title
         title = paper_data.get('title', '')
         if title:
             clean_name = f"{self.clean_filename(title)}.pdf"
             self.logger.info(f"Generated filename from title: {clean_name}")
             return clean_name
 
-        # Fallback to paper ID
+        # if a filename cannot be found, use paper_id
         fallback = f"{paper_data.get('paperId', 'unknown')}.pdf"
         self.logger.info(f"Using fallback filename: {fallback}")
         return fallback
@@ -76,7 +73,7 @@ class PaperFetcher:
     async def try_alternative_sources(self, paper_data: Dict, session: aiohttp.ClientSession) -> str:
         """Try to find PDF from alternative sources"""
         try:
-            # Try arXiv first
+            # arXiv
             arxiv_id = None
             if paper_data.get('externalIds', {}).get('ArXiv'):
                 arxiv_id = paper_data['externalIds']['ArXiv']
@@ -85,7 +82,7 @@ class PaperFetcher:
                     if response.status == 200:
                         return arxiv_url
 
-            # Try unpaywall API
+            # unpaywall
             if paper_data.get('externalIds', {}).get('DOI'):
                 doi = paper_data['externalIds']['DOI']
                 unpaywall_url = f"https://api.unpaywall.org/v2/{doi}?email=test@example.com"
@@ -95,7 +92,7 @@ class PaperFetcher:
                         if data.get('best_oa_location', {}).get('url_for_pdf'):
                             return data['best_oa_location']['url_for_pdf']
 
-            # Try CORE API (you might want to add your API key)
+            # CORE API
             if paper_data.get('externalIds', {}).get('DOI'):
                 core_url = f"https://api.core.ac.uk/v3/search/works?q=doi:{doi}"
                 headers = {"Authorization": "Bearer your_core_api_key"}  # Optional
@@ -115,13 +112,13 @@ class PaperFetcher:
         title = paper_data.get('title', 'Unknown Title')
         
         try:
-            # Try Semantic Scholar's open access PDF first
+            # semantic scholar's open access
             pdf_url = None
             if paper_data.get('openAccessPdf'):
                 pdf_url = paper_data['openAccessPdf'].get('url')
                 self.logger.info(f"Found open access PDF URL: {pdf_url}")
             
-            # If no open access PDF, try alternative sources
+            # if semantic scholar returns error, try other sources
             if not pdf_url:
                 pdf_url = await self.try_alternative_sources(paper_data, session)
                 if pdf_url:
@@ -135,11 +132,11 @@ class PaperFetcher:
             
             async with session.get(pdf_url) as response:
                 if response.status == 200:
-                    # Get appropriate filename
+                    # get filename
                     filename = self.extract_filename_from_response(response, paper_data)
                     filepath = os.path.join(self.output_dir, filename)
                     
-                    # Ensure filename is unique
+                    # adjust filename if it is already taken
                     base, ext = os.path.splitext(filepath)
                     counter = 1
                     while os.path.exists(filepath):
@@ -152,7 +149,7 @@ class PaperFetcher:
                         await f.write(await response.read())
                     print(f"✅ Downloaded: {title} -> {os.path.basename(filepath)}")
                     
-                    # Store filename in paper data for metadata
+                    # add file name to paper metadata
                     paper_data['saved_filename'] = os.path.basename(filepath)
                     return True
                 print(f"❌ {title} - Failed to download PDF (Status: {response.status})")
@@ -177,7 +174,7 @@ class PaperFetcher:
                             self.logger.info(f"Successfully fetched metadata for paper: {data.get('title', 'Unknown')}")
                             return data
                         elif response.status == 429:
-                            wait_time = 5 * (attempt + 1)  # Exponential backoff
+                            wait_time = 5 * (attempt + 1)  
                             self.logger.warning(f"Rate limit hit, waiting {wait_time} seconds...")
                             await asyncio.sleep(wait_time)
                             continue
@@ -204,7 +201,7 @@ class PaperFetcher:
             return []
             
         results = []
-        # Process current paper
+        # proccess the chosen paper
         if await self.download_pdf(paper_data, session):
             results.append({
                 'id': paper_id,
@@ -216,7 +213,7 @@ class PaperFetcher:
                 'pdf_path': os.path.join(self.output_dir, paper_data.get('saved_filename', f"{paper_id}.pdf"))
             })
 
-        # Process references and citations
+        # proccess the references papers inside chosen paper
         connected_papers = []
         if paper_data.get('references'):
             connected_papers.extend(paper_data['references'])
@@ -226,7 +223,6 @@ class PaperFetcher:
         if connected_papers:
             print(f"\nProcessing {len(connected_papers)} papers connected to: {paper_data.get('title')}")
         
-        # Process connected papers in parallel
         tasks = []
         for paper in connected_papers:
             if paper.get('paperId'):
@@ -249,7 +245,7 @@ class PaperFetcher:
         }
 
         max_retries = 3
-        retry_delay = 5  # seconds
+        retry_delay = 5 
         
         for attempt in range(max_retries):
             async with self.rate_limit:
@@ -259,11 +255,11 @@ class PaperFetcher:
                         if response.status == 200:
                             data = await response.json()
                             return data.get('data', [])
-                        elif response.status == 429:  # Rate limit
+                        elif response.status == 429:  # this is the rate limit error code
                             if attempt < max_retries - 1:
                                 self.logger.warning(f"Rate limit hit, waiting {retry_delay} seconds...")
                                 await asyncio.sleep(retry_delay)
-                                retry_delay *= 2  # Exponential backoff
+                                retry_delay *= 2  
                                 continue
                         self.logger.error(f"Search failed with status {response.status}")
                         return []
@@ -285,7 +281,7 @@ class PaperFetcher:
         async with aiohttp.ClientSession() as session:
             results = await self.process_paper(paper_id, depth, session)
         
-        # Save metadata
+        # save all the metadata
         metadata_file = os.path.join(self.output_dir, 'papers_metadata.json')
         with open(metadata_file, 'w') as f:
             json.dump(results, f, indent=2)
