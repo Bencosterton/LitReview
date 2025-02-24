@@ -86,5 +86,7 @@ All downloaded papers are saved in the `papers` directory, and their metadata (i
 ### Search Depth
 
 The 'depth' option will dictate how deep the search goes. 
+
 Depth of '1' will search all papers referenced in the initial search target.
+
 Depth of '2' will search all papers referenced in the insital search target, plus all papers referenced in the referenced papers.
