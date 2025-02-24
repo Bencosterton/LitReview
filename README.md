@@ -18,7 +18,7 @@ You can use this tool in two ways:
 Search for papers by keywords and select which one to download:
 
 ```bash
-python paper_fetcher.py --search "your search terms" --depth 1 --verbose
+python litReview.py --search "your search terms" --depth 1 --verbose
 ```
 
 ### 2. Direct Paper ID
@@ -26,7 +26,7 @@ python paper_fetcher.py --search "your search terms" --depth 1 --verbose
 If you already have a Semantic Scholar Paper ID:
 
 ```bash
-python paper_fetcher.py --paper-id <paper_id> --depth 1 --verbose
+python litReview.py --paper-id <paper_id> --depth 1 --verbose
 ```
 
 Arguments:
@@ -41,7 +41,7 @@ Arguments:
 ### Example 1: Search for Papers
 
 ```bash
-python paper_fetcher.py --search "Binaural Audio Head Tracking" --depth 1
+python litReview.py --search "Binaural Audio Head Tracking" --depth 1
 ```
 
 This will:
@@ -72,7 +72,7 @@ Enter the number of the paper to download (or 'q' to quit):
 ### Example 2: Direct Paper ID
 
 ```bash
-python paper_fetcher.py --paper-id 4c03e1d7221f0107640250c778a4a61a4b991a04 --depth 1
+python litReview.py --paper-id 4c03e1d7221f0107640250c778a4a61a4b991a04 --depth 1
 ```
 
 This will directly download the specified paper and its connected papers.
