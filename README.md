@@ -1,5 +1,6 @@
-# Connected Papers Fetcher
+# LitReview
 
+Automate your lit review paper discovery
 A command-line tool to download academic papers and their connected references/citations using the Semantic Scholar API.
 
 ## Installation
